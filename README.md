@@ -33,6 +33,13 @@ mvn clean compile
 mvn exec:java
 ```
 
+**Option 3: Build JAR Package**
+```bash
+# Create standalone executable JAR
+mvn clean package
+java -jar target/tni-synthesizer-1.0.0.jar
+```
+
 ## 📖 Documentation
 
 **Complete documentation is available at: [https://differentjason.github.io/TNI-1/](https://differentjason.github.io/TNI-1/)**

@@ -6,8 +6,6 @@ import com.tni.synthesizer.weather.WeatherServiceException;
 import javax.sound.midi.*;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.*;
 import java.util.List;
@@ -18,7 +16,6 @@ import java.util.List;
  */
 public class DataToMidiGenerator extends JFrame {
     private Synthesizer midiSynth;
-    private MidiChannel[] channels;
     private Sequence sequence;
     private Sequencer sequencer;
     private WeatherService weatherService;
@@ -76,7 +73,6 @@ public class DataToMidiGenerator extends JFrame {
     private void setupMidi() throws MidiUnavailableException {
         midiSynth = MidiSystem.getSynthesizer();
         midiSynth.open();
-        channels = midiSynth.getChannels();
         
         sequencer = MidiSystem.getSequencer();
         sequencer.open();
@@ -130,11 +126,11 @@ public class DataToMidiGenerator extends JFrame {
         
         // Sample data buttons
         JPanel samplePanel = new JPanel(new FlowLayout());
-        JButton sampleButton1 = new JButton("Stock Data");
+        JButton sampleButton1 = new JButton("Pitcher/Catcher");
         JButton sampleButton2 = new JButton("Sample Weather");
         JButton sampleButton3 = new JButton("Random Walk");
         
-        sampleButton1.addActionListener(e -> loadSampleData("stock"));
+        sampleButton1.addActionListener(e -> loadSampleData("baseball"));
         sampleButton2.addActionListener(e -> loadSampleData("weather"));
         sampleButton3.addActionListener(e -> loadSampleData("random"));
         
@@ -288,8 +284,8 @@ public class DataToMidiGenerator extends JFrame {
         String sampleData = "";
         
         switch (type) {
-            case "stock":
-                sampleData = "100.5, 102.1, 99.8, 101.3, 104.7, 106.2, 103.9, 107.1, 105.4, 108.8, 106.3, 109.9, 112.5, 108.7, 105.2";
+            case "baseball":
+                sampleData = generateBaseballStatistics();
                 break;
             case "weather":
                 sampleData = "22.5, 24.1, 26.3, 28.7, 25.4, 23.8, 21.2, 19.6, 18.3, 20.1, 22.9, 25.6, 27.8, 29.2, 26.7, 24.3";
@@ -309,6 +305,67 @@ public class DataToMidiGenerator extends JFrame {
         }
         
         dataInput.setText(sampleData);
+    }
+    
+    /**
+     * Generate historical baseball pitcher and catcher statistics data
+     * Selects a random historical year and generates realistic baseball stats
+     * focusing on the dynamic relationship between pitchers and catchers
+     */
+    private String generateBaseballStatistics() {
+        Random rand = new Random();
+        
+        // Select a random historical year with famous pitcher-catcher combinations
+        String[] historicalSeasons = {
+            "1954 - NY Giants (Sal Maglie/Wes Westrum)", 
+            "1961 - NY Yankees (Whitey Ford/Elston Howard)",
+            "1975 - Cincinnati Reds (Don Gullett/Johnny Bench)", 
+            "1986 - NY Mets (Dwight Gooden/Gary Carter)",
+            "1995 - Atlanta Braves (Greg Maddux/Javy Lopez)", 
+            "1998 - NY Yankees (David Wells/Jorge Posada)",
+            "2001 - Arizona D-backs (Randy Johnson/Damian Miller)", 
+            "2004 - Boston Red Sox (Pedro Martinez/Jason Varitek)",
+            "2016 - Chicago Cubs (Jake Arrieta/David Ross)", 
+            "2019 - Houston Astros (Gerrit Cole/Martin Maldonado)",
+            "2021 - Atlanta Braves (Max Fried/Travis d'Arnaud)"
+        };
+        
+        String selectedSeason = historicalSeasons[rand.nextInt(historicalSeasons.length)];
+        
+        StringBuilder sb = new StringBuilder();
+        
+        // Generate game-by-game pitcher-catcher performance metrics
+        // Combining ERA, WHIP, batting avg, caught stealing %, etc.
+        for (int game = 1; game <= 20; game++) {
+            if (game > 1) sb.append(", ");
+            
+            double gameMetric;
+            switch (game % 4) {
+                case 0: // Pitcher ERA for this game (scaled to 200-600 range)
+                    gameMetric = (2.0 + rand.nextDouble() * 4.0) * 100; // 200-600
+                    break;
+                case 1: // Catcher batting average (scaled to 150-350 range)
+                    gameMetric = (0.150 + rand.nextDouble() * 0.200) * 1000; // 150-350
+                    break;
+                case 2: // Combined pitcher-catcher chemistry metric (100-300 range)
+                    // Simulates how well they work together (strikeouts, passed balls, etc.)
+                    gameMetric = 100 + rand.nextDouble() * 200; // 100-300
+                    break;
+                case 3: // Defensive efficiency rating (50-150 range)
+                    // Caught stealing %, pickoffs, pitch framing, etc.
+                    gameMetric = 50 + rand.nextDouble() * 100; // 50-150
+                    break;
+                default:
+                    gameMetric = 100 + rand.nextDouble() * 100;
+            }
+            
+            sb.append(String.format("%.1f", gameMetric));
+        }
+        
+        // Update status to show what season's data was generated
+        statusLabel.setText("Generated " + selectedSeason + " pitcher/catcher statistics");
+        
+        return sb.toString();
     }
     
     /**
@@ -509,7 +566,6 @@ public class DataToMidiGenerator extends JFrame {
             
             // Generate MIDI events
             long currentTick = 0;
-            int measureLength = 480 * 4; // 4 beats per measure
             int beatsPerDataPoint = 1; // Each data point = 1 beat
             
             // Set tempo
@@ -630,19 +686,8 @@ public class DataToMidiGenerator extends JFrame {
         DataAnalysis analysis = new DataAnalysis();
         analysis.min = Arrays.stream(data).min().orElse(0);
         analysis.max = Arrays.stream(data).max().orElse(1);
-        analysis.mean = Arrays.stream(data).average().orElse(0);
         
-        // Calculate overall trend
-        double firstHalf = Arrays.stream(data, 0, data.length/2).average().orElse(0);
-        double secondHalf = Arrays.stream(data, data.length/2, data.length).average().orElse(0);
-        analysis.isPositiveTrend = secondHalf > firstHalf;
-        
-        // Calculate volatility
-        double variance = 0;
-        for (double value : data) {
-            variance += Math.pow(value - analysis.mean, 2);
-        }
-        analysis.volatility = Math.sqrt(variance / data.length);
+        // Note: Additional analysis metrics could be added here if needed for future features
         
         return analysis;
     }
@@ -735,8 +780,7 @@ public class DataToMidiGenerator extends JFrame {
      * Data analysis helper class
      */
     private static class DataAnalysis {
-        double min, max, mean, volatility;
-        boolean isPositiveTrend;
+        double min, max;
     }
     
     public static void main(String[] args) {

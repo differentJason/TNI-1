@@ -53,7 +53,7 @@ java -jar target/tni-synthesizer-1.0.0.jar
 ## 🎹 What You Can Do
 
 ### Transform Data into Music
-- Convert stock prices, sensor readings, or any numerical data into melodies
+- Convert historical baseball statistics, sensor readings, or any numerical data into melodies
 - Automatic chord progression generation based on data patterns
 - Customizable tempo, key, and musical style
 
@@ -99,6 +99,7 @@ com.tni.synthesizer/
 
 ## 💡 Use Cases
 
+- **Sports Analytics Sonification**: Transform baseball statistics into musical patterns to understand player performance trends
 - **Data Sonification**: Make numerical data audible and intuitive
 - **Ambient Music Creation**: Generate endless background music from weather patterns
 - **Educational Tool**: Learn about data patterns through musical representation

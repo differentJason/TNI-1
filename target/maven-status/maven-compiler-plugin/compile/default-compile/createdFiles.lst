@@ -1,0 +1,11 @@
+com/tni/synthesizer/generative/DataToMidiGenerator$DataAnalysis.class
+com/tni/synthesizer/weather/WeatherService.class
+com/tni/synthesizer/weather/WeatherServiceException.class
+com/tni/synthesizer/SimpleSynthesizerApplication.class
+com/tni/synthesizer/generative/DataToMidiGenerator$1.class
+com/tni/synthesizer/generative/DataToMidiGenerator.class
+com/tni/synthesizer/weather/WeatherData.class
+com/tni/synthesizer/weather/WeatherService$WeatherParameter.class
+com/tni/synthesizer/SimpleMidiSynthesizer.class
+com/tni/synthesizer/SimpleSynthesizerApplication$1.class
+com/tni/synthesizer/generative/DataToMidiGenerator$2.class

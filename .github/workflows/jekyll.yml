@@ -46,11 +46,6 @@ jobs:
         id: pages
         uses: actions/configure-pages@v4
 
-      - name: Install dependencies
-        run: |
-          gem install bundler
-          bundle install
-
       - name: Build Jekyll site
         run: |
           bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
@@ -93,29 +88,8 @@ jobs:
           bundler-cache: true
           working-directory: ./docs
 
-      - name: Install dependencies
-        run: |
-          gem install bundler
-          bundle install
-
       - name: Test Jekyll build
         run: |
           bundle exec jekyll build --drafts --unpublished --future
         env:
           JEKYLL_ENV: development
-
-      - name: Run HTML validation
-        run: |
-          # Install HTML5 validator
-          sudo apt-get update
-          sudo apt-get install -y nodejs npm
-          npm install -g html-validate
-          
-          # Validate generated HTML
-          find _site -name "*.html" -exec html-validate {} \; || echo "HTML validation completed with warnings"
-
-      - name: Check for broken links
-        run: |
-          # Install and run link checker
-          npm install -g broken-link-checker
-          blc http://localhost:4000 --recursive --ordered || echo "Link check completed with warnings"

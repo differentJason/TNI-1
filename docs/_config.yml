@@ -13,11 +13,12 @@ repository: differentJason/TNI-1
 # Build settings
 markdown: kramdown
 highlighter: rouge
-theme: minima
+remote_theme: pages-themes/minima@v2.5.0
 plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
+  - jekyll-remote-theme
 
 # Navigation
 header_pages:

@@ -1,0 +1,344 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+/* Custom styles for TNI Synthesizer Suite Documentation */
+
+/* Color scheme */
+:root {
+  --primary-color: #2E86AB;
+  --secondary-color: #A23B72;
+  --accent-color: #F18F01;
+  --success-color: #C73E1D;
+  --light-bg: #F8F9FA;
+  --dark-text: #2C3E50;
+  --light-text: #6C757D;
+  --code-bg: #F4F4F4;
+  --border-color: #E9ECEF;
+}
+
+/* Typography */
+.site-title {
+  font-size: 1.8rem !important;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--dark-text);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+h1 {
+  color: var(--primary-color);
+  border-bottom: 3px solid var(--accent-color);
+  padding-bottom: 0.5rem;
+}
+
+h2 {
+  color: var(--secondary-color);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.3rem;
+}
+
+/* Navigation */
+.site-nav .page-link {
+  color: var(--dark-text);
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.site-nav .page-link:hover {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+/* Documentation grid */
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.doc-card {
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.doc-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(46, 134, 171, 0.15);
+  transform: translateY(-2px);
+}
+
+.doc-card h3 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.doc-card h3 a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.doc-card h3 a:hover {
+  color: var(--secondary-color);
+}
+
+.doc-card p {
+  color: var(--light-text);
+  margin-bottom: 0;
+}
+
+/* Code blocks */
+pre, code {
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
+}
+
+pre {
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+code {
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+/* Syntax highlighting improvements */
+.highlight {
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.highlight .err { color: #a61717; background-color: #e3d2d2; }
+.highlight .k { color: #000080; font-weight: bold; }
+.highlight .s { color: #008080; }
+.highlight .c { color: #808080; font-style: italic; }
+
+/* Buttons and links */
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  margin: 0.5rem;
+  border: none;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #1e5d7a;
+  color: white;
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #7a2c55;
+  color: white;
+  text-decoration: none;
+}
+
+/* Alert boxes */
+.alert {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 5px;
+  border-left: 4px solid;
+}
+
+.alert-info {
+  background-color: #e3f2fd;
+  border-left-color: var(--primary-color);
+  color: #0d47a1;
+}
+
+.alert-warning {
+  background-color: #fff3e0;
+  border-left-color: var(--accent-color);
+  color: #e65100;
+}
+
+.alert-success {
+  background-color: #e8f5e8;
+  border-left-color: #4caf50;
+  color: #2e7d32;
+}
+
+.alert-danger {
+  background-color: #ffebee;
+  border-left-color: var(--success-color);
+  color: #c62828;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  background: white;
+}
+
+table th,
+table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+table th {
+  background-color: var(--light-bg);
+  font-weight: 600;
+  color: var(--dark-text);
+  border-bottom: 2px solid var(--primary-color);
+}
+
+table tbody tr:hover {
+  background-color: var(--light-bg);
+}
+
+/* Lists */
+ul, ol {
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 3px;
+  color: white;
+}
+
+.badge-primary {
+  background-color: var(--primary-color);
+}
+
+.badge-secondary {
+  background-color: var(--secondary-color);
+}
+
+.badge-success {
+  background-color: #28a745;
+}
+
+.badge-warning {
+  background-color: var(--accent-color);
+}
+
+/* Footer */
+.site-footer {
+  background-color: var(--dark-text);
+  color: white;
+  padding: 2rem 0;
+  margin-top: 3rem;
+}
+
+.site-footer a {
+  color: var(--accent-color);
+}
+
+.site-footer a:hover {
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .doc-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .doc-card {
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 1.8rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  .btn {
+    display: block;
+    text-align: center;
+    margin: 0.5rem 0;
+  }
+}
+
+/* Print styles */
+@media print {
+  .site-nav,
+  .site-footer,
+  .doc-card:hover {
+    box-shadow: none;
+    transform: none;
+  }
+  
+  .doc-card {
+    border: 1px solid #ddd;
+    page-break-inside: avoid;
+  }
+  
+  pre, code {
+    border: 1px solid #ddd;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --light-bg: #2C3E50;
+    --dark-text: #ECF0F1;
+    --light-text: #BDC3C7;
+    --code-bg: #34495E;
+    --border-color: #4A4A4A;
+  }
+  
+  body {
+    background-color: #1E2A3A;
+    color: var(--dark-text);
+  }
+  
+  .doc-card {
+    background: #2C3E50;
+    border-color: var(--border-color);
+  }
+  
+  table th {
+    background-color: var(--code-bg);
+  }
+}

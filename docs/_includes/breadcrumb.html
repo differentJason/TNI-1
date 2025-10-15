@@ -1,0 +1,64 @@
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol class="breadcrumb-list">
+    <li class="breadcrumb-item">
+      <a href="{{ '/' | relative_url }}">Home</a>
+    </li>
+    
+    {% if page.parent %}
+      <li class="breadcrumb-item">
+        <a href="{{ page.parent | relative_url }}">{{ page.parent_title | default: page.parent }}</a>
+      </li>
+    {% endif %}
+    
+    {% if page.title != "Home" %}
+      <li class="breadcrumb-item active" aria-current="page">
+        {{ page.title }}
+      </li>
+    {% endif %}
+  </ol>
+</nav>
+
+<style>
+.breadcrumb {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0;
+  background-color: var(--light-bg);
+  border-radius: 5px;
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "›";
+  margin: 0 0.5rem;
+  color: var(--light-text);
+}
+
+.breadcrumb-item a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.breadcrumb-item a:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: var(--light-text);
+  font-weight: 500;
+}
+</style>

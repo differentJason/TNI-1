@@ -1,0 +1,82 @@
+# Jekyll Configuration for TNI Synthesizer Suite Documentation
+
+# Site settings
+title: TNI Synthesizer Suite
+description: >-
+  A comprehensive Java-based synthesizer with MIDI capabilities, data-to-music generation,
+  and real-time weather API integration for creative music composition.
+baseurl: "/TNI-1" # the subpath of your site, e.g. /blog
+url: "https://differentjason.github.io" # the base hostname & protocol for your site
+github_username: differentJason
+repository: differentJason/TNI-1
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Navigation
+header_pages:
+  - getting-started.md
+  - user-guide.md
+  - weather-api.md
+  - troubleshooting.md
+  - api-reference.md
+
+# Collections
+collections:
+  tutorials:
+    output: true
+    permalink: /:collection/:name/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      author: "TNI Team"
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+  - scope:
+      path: ""
+      type: "tutorials"
+    values:
+      layout: "tutorial"
+
+# Syntax highlighting
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+
+# SEO
+twitter:
+  username: # Add if available
+  card: summary
+
+# Exclude from processing
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - README.md

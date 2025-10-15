@@ -6,6 +6,7 @@ import com.tni.synthesizer.weather.WeatherServiceException;
 import javax.sound.midi.*;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.*;
 import java.util.List;
@@ -19,6 +20,12 @@ public class DataToMidiGenerator extends JFrame {
     private Sequence sequence;
     private Sequencer sequencer;
     private WeatherService weatherService;
+    
+    // Advanced synthesizer components
+    private AdvancedAudioEngine audioEngine;
+    private PatternMatrix patternMatrix;
+    private ImageToMusicSynthesizer imageToMusicSynth;
+    private DAWIntegrationManager dawManager;
     
     // Chord progressions for different data patterns
     private static final int[][] MAJOR_PROGRESSION = {
@@ -47,6 +54,17 @@ public class DataToMidiGenerator extends JFrame {
     private JButton fetchWeatherButton;
     private JLabel statusLabel;
     
+    // Advanced synthesizer UI components
+    private JComboBox<SynthChannel.Waveform>[] channelWaveforms;
+    private JSlider[] channelVolumes, channelPans;
+    private JCheckBox[] channelEnabled;
+    private JButton loadImageButton;
+    private JLabel imageStatusLabel;
+    
+    // Effects UI components
+    private JCheckBox[] effectsEnabled;
+    private JSlider[] effectsParams;
+    
     // Current settings
     private int currentTempo = 120;
     private String currentStyle = "Major";
@@ -57,7 +75,22 @@ public class DataToMidiGenerator extends JFrame {
     public DataToMidiGenerator() throws MidiUnavailableException {
         setupMidi();
         setupWeatherService();
+        setupAdvancedSynthesizer();
         setupUI();
+    }
+    
+    /**
+     * Initialize advanced synthesizer components
+     */
+    private void setupAdvancedSynthesizer() {
+        try {
+            audioEngine = new AdvancedAudioEngine();
+            patternMatrix = audioEngine.getPatternMatrix();
+            dawManager = new DAWIntegrationManager();
+        } catch (Exception e) {
+            System.err.println("Warning: Could not initialize advanced audio engine: " + e.getMessage());
+            // Continue with basic MIDI functionality
+        }
     }
     
     /**
@@ -92,20 +125,33 @@ public class DataToMidiGenerator extends JFrame {
      * Create the user interface
      */
     private void setupUI() {
-        setTitle("Data to MIDI Generator");
+        setTitle("TNI Synthesizer Suite - Data to Music Generator");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         
-        // Input panel
-        add(createInputPanel(), BorderLayout.CENTER);
+        // Main content panel with tabs
+        JTabbedPane mainTabs = new JTabbedPane();
         
-        // Control panel
-        add(createControlPanel(), BorderLayout.EAST);
+        // Basic data input tab
+        JPanel basicPanel = new JPanel(new BorderLayout());
+        basicPanel.add(createInputPanel(), BorderLayout.CENTER);
+        basicPanel.add(createControlPanel(), BorderLayout.EAST);
+        mainTabs.addTab("Data Input", basicPanel);
+        
+        // Advanced synthesizer tabs
+        if (audioEngine != null) {
+            mainTabs.addTab("Synthesizer", createSynthesizerPanel());
+            mainTabs.addTab("Effects", createEffectsPanel());
+            mainTabs.addTab("Image to Music", createImageToMusicPanel());
+            mainTabs.addTab("DAW Integration", createDAWIntegrationPanel());
+        }
+        
+        add(mainTabs, BorderLayout.CENTER);
         
         // Button panel
         add(createButtonPanel(), BorderLayout.SOUTH);
         
-        pack();
+        setSize(1000, 700);
         setLocationRelativeTo(null);
     }
     
@@ -129,20 +175,32 @@ public class DataToMidiGenerator extends JFrame {
         JButton sampleButton1 = new JButton("Pitcher/Catcher");
         JButton sampleButton2 = new JButton("Sample Weather");
         JButton sampleButton3 = new JButton("Random Walk");
+        loadImageButton = new JButton("Load Image");
         
         sampleButton1.addActionListener(e -> loadSampleData("baseball"));
         sampleButton2.addActionListener(e -> loadSampleData("weather"));
         sampleButton3.addActionListener(e -> loadSampleData("random"));
+        loadImageButton.addActionListener(e -> loadImageFile());
         
         samplePanel.add(sampleButton1);
         samplePanel.add(sampleButton2);
         samplePanel.add(sampleButton3);
+        samplePanel.add(loadImageButton);
+        
+        // Image status label
+        imageStatusLabel = new JLabel("No image loaded");
+        imageStatusLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 11));
         
         // Weather API section
         JPanel weatherPanel = createWeatherPanel();
         
+        JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        imagePanel.add(new JLabel("Image Status:"));
+        imagePanel.add(imageStatusLabel);
+        
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(samplePanel, BorderLayout.NORTH);
+        bottomPanel.add(imagePanel, BorderLayout.CENTER);
         bottomPanel.add(weatherPanel, BorderLayout.SOUTH);
         
         panel.add(bottomPanel, BorderLayout.SOUTH);
@@ -366,6 +424,275 @@ public class DataToMidiGenerator extends JFrame {
         statusLabel.setText("Generated " + selectedSeason + " pitcher/catcher statistics");
         
         return sb.toString();
+    }
+    
+    /**
+     * Load and process image file for music generation
+     */
+    private void loadImageFile() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+            "Image files", "jpg", "jpeg", "png", "gif", "bmp"));
+        
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            try {
+                File imageFile = chooser.getSelectedFile();
+                BufferedImage image = javax.imageio.ImageIO.read(imageFile);
+                
+                if (image == null) {
+                    imageStatusLabel.setText("Error: Could not load image");
+                    return;
+                }
+                
+                // Convert image to musical data
+                double[] imageData = ImageToMusicSynthesizer.imageToNumericalData(image);
+                ImageToMusicSynthesizer.ImageAnalysis analysis = 
+                    ImageToMusicSynthesizer.analyzeImageComposition(image);
+                
+                // Format data as comma-separated string
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < Math.min(imageData.length, 100); i++) { // Limit to first 100 data points
+                    if (i > 0) sb.append(", ");
+                    sb.append(String.format("%.1f", imageData[i]));
+                }
+                
+                dataInput.setText(sb.toString());
+                
+                // Auto-suggest settings based on image analysis
+                tempoSlider.setValue(analysis.suggestedTempo);
+                styleCombo.setSelectedItem(analysis.suggestedKey);
+                
+                imageStatusLabel.setText(String.format("Loaded: %s (%dx%d) - %s", 
+                    imageFile.getName(), image.getWidth(), image.getHeight(), analysis.toString()));
+                
+            } catch (Exception e) {
+                imageStatusLabel.setText("Error loading image: " + e.getMessage());
+                System.err.println("Image load error: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Create synthesizer control panel
+     */
+    private JPanel createSynthesizerPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        
+        // Channel controls
+        JPanel channelPanel = new JPanel(new GridLayout(0, 1, 5, 5));
+        channelPanel.setBorder(BorderFactory.createTitledBorder("Synthesizer Channels"));
+        
+        int maxChannels = audioEngine != null ? audioEngine.getMaxChannels() : 8;
+        @SuppressWarnings("unchecked")
+        JComboBox<SynthChannel.Waveform>[] waveforms = new JComboBox[maxChannels];
+        channelWaveforms = waveforms;
+        channelVolumes = new JSlider[maxChannels];
+        channelPans = new JSlider[maxChannels];
+        channelEnabled = new JCheckBox[maxChannels];
+        
+        for (int i = 0; i < maxChannels; i++) {
+            JPanel channelRow = createChannelControlRow(i);
+            channelPanel.add(channelRow);
+        }
+        
+        JScrollPane scrollPane = new JScrollPane(channelPanel);
+        scrollPane.setPreferredSize(new Dimension(600, 400));
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Pattern matrix controls
+        JPanel patternPanel = createPatternMatrixPanel();
+        panel.add(patternPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Create individual channel control row
+     */
+    private JPanel createChannelControlRow(int channelIndex) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        row.setBorder(BorderFactory.createTitledBorder("Channel " + (channelIndex + 1)));
+        
+        // Enable checkbox
+        channelEnabled[channelIndex] = new JCheckBox("Enable", true);
+        channelEnabled[channelIndex].addActionListener(e -> updateChannelEnabled(channelIndex));
+        row.add(channelEnabled[channelIndex]);
+        
+        // Waveform selector
+        row.add(new JLabel("Wave:"));
+        channelWaveforms[channelIndex] = new JComboBox<>(SynthChannel.Waveform.values());
+        channelWaveforms[channelIndex].addActionListener(e -> updateChannelWaveform(channelIndex));
+        row.add(channelWaveforms[channelIndex]);
+        
+        // Volume control
+        row.add(new JLabel("Vol:"));
+        channelVolumes[channelIndex] = new JSlider(0, 100, 80);
+        channelVolumes[channelIndex].setPreferredSize(new Dimension(100, 25));
+        channelVolumes[channelIndex].addChangeListener(e -> updateChannelVolume(channelIndex));
+        row.add(channelVolumes[channelIndex]);
+        
+        // Pan control
+        row.add(new JLabel("Pan:"));
+        channelPans[channelIndex] = new JSlider(-100, 100, 0);
+        channelPans[channelIndex].setPreferredSize(new Dimension(100, 25));
+        channelPans[channelIndex].addChangeListener(e -> updateChannelPan(channelIndex));
+        row.add(channelPans[channelIndex]);
+        
+        return row;
+    }
+    
+    /**
+     * Create pattern matrix control panel
+     */
+    private JPanel createPatternMatrixPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Pattern Matrix"));
+        
+        JPanel controls = new JPanel(new FlowLayout());
+        JButton playPatternButton = new JButton("Play Patterns");
+        JButton stopPatternButton = new JButton("Stop Patterns");
+        
+        playPatternButton.addActionListener(e -> {
+            if (patternMatrix != null) {
+                patternMatrix.play();
+            }
+        });
+        
+        stopPatternButton.addActionListener(e -> {
+            if (patternMatrix != null) {
+                patternMatrix.stop();
+            }
+        });
+        
+        controls.add(playPatternButton);
+        controls.add(stopPatternButton);
+        
+        panel.add(controls, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Create effects control panel
+     */
+    private JPanel createEffectsPanel() {
+        JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Master Effects"));
+        
+        EffectsChain.EffectType[] effects = EffectsChain.EffectType.values();
+        effectsEnabled = new JCheckBox[effects.length];
+        effectsParams = new JSlider[effects.length * 2]; // 2 params per effect
+        
+        for (int i = 0; i < effects.length; i++) {
+            JPanel effectPanel = createEffectControlPanel(effects[i], i);
+            panel.add(effectPanel);
+        }
+        
+        return panel;
+    }
+    
+    /**
+     * Create individual effect control panel
+     */
+    private JPanel createEffectControlPanel(EffectsChain.EffectType effectType, int index) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createTitledBorder(effectType.getDisplayName()));
+        GridBagConstraints gbc = new GridBagConstraints();
+        
+        // Enable checkbox
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        effectsEnabled[index] = new JCheckBox("Enable", false);
+        effectsEnabled[index].addActionListener(e -> updateEffectEnabled(effectType));
+        panel.add(effectsEnabled[index], gbc);
+        
+        // Effect-specific parameters
+        gbc.gridwidth = 1; gbc.gridy = 1;
+        switch (effectType) {
+            case REVERB:
+                gbc.gridx = 0;
+                panel.add(new JLabel("Mix:"), gbc);
+                gbc.gridx = 1;
+                JSlider reverbMix = new JSlider(0, 100, 30);
+                effectsParams[index * 2] = reverbMix;
+                panel.add(reverbMix, gbc);
+                break;
+            case DELAY:
+                gbc.gridx = 0;
+                panel.add(new JLabel("Time:"), gbc);
+                gbc.gridx = 1;
+                JSlider delayTime = new JSlider(10, 200, 25);
+                effectsParams[index * 2] = delayTime;
+                panel.add(delayTime, gbc);
+                break;
+            case DISTORTION:
+                gbc.gridx = 0;
+                panel.add(new JLabel("Drive:"), gbc);
+                gbc.gridx = 1;
+                JSlider distDrive = new JSlider(100, 1000, 200);
+                effectsParams[index * 2] = distDrive;
+                panel.add(distDrive, gbc);
+                break;
+            default:
+                gbc.gridx = 0;
+                panel.add(new JLabel("Amount:"), gbc);
+                gbc.gridx = 1;
+                JSlider amount = new JSlider(0, 100, 50);
+                effectsParams[index * 2] = amount;
+                panel.add(amount, gbc);
+                break;
+        }
+        
+        return panel;
+    }
+    
+    // Channel update methods
+    private void updateChannelEnabled(int channelIndex) {
+        if (audioEngine != null) {
+            SynthChannel channel = audioEngine.getChannel(channelIndex);
+            if (channel != null) {
+                channel.setEnabled(channelEnabled[channelIndex].isSelected());
+            }
+        }
+    }
+    
+    private void updateChannelWaveform(int channelIndex) {
+        if (audioEngine != null) {
+            SynthChannel channel = audioEngine.getChannel(channelIndex);
+            if (channel != null) {
+                SynthChannel.Waveform waveform = (SynthChannel.Waveform) channelWaveforms[channelIndex].getSelectedItem();
+                channel.setWaveform(waveform);
+            }
+        }
+    }
+    
+    private void updateChannelVolume(int channelIndex) {
+        if (audioEngine != null) {
+            SynthChannel channel = audioEngine.getChannel(channelIndex);
+            if (channel != null) {
+                float volume = channelVolumes[channelIndex].getValue() / 100.0f;
+                channel.setVolume(volume);
+            }
+        }
+    }
+    
+    private void updateChannelPan(int channelIndex) {
+        if (audioEngine != null) {
+            SynthChannel channel = audioEngine.getChannel(channelIndex);
+            if (channel != null) {
+                float pan = channelPans[channelIndex].getValue() / 100.0f;
+                channel.setPan(pan);
+            }
+        }
+    }
+    
+    private void updateEffectEnabled(EffectsChain.EffectType effectType) {
+        if (audioEngine != null) {
+            EffectsChain effects = audioEngine.getMasterEffects();
+            if (effects != null) {
+                int index = effectType.ordinal();
+                effects.setEffectEnabled(effectType, effectsEnabled[index].isSelected());
+            }
+        }
     }
     
     /**
@@ -637,17 +964,23 @@ public class DataToMidiGenerator extends JFrame {
      */
     private void addNoteEvent(Track track, int channel, int note, int velocity, long tick, long duration) {
         try {
+            // Ensure all values are in valid MIDI range
+            int safeChannel = Math.max(0, Math.min(15, channel));
+            int safeNote = Math.max(0, Math.min(127, note));
+            int safeVelocity = Math.max(0, Math.min(127, velocity));
+            
             // Note on
             ShortMessage noteOn = new ShortMessage();
-            noteOn.setMessage(ShortMessage.NOTE_ON, channel, note, velocity);
+            noteOn.setMessage(ShortMessage.NOTE_ON, safeChannel, safeNote, safeVelocity);
             track.add(new MidiEvent(noteOn, tick));
             
             // Note off
             ShortMessage noteOff = new ShortMessage();
-            noteOff.setMessage(ShortMessage.NOTE_OFF, channel, note, 0);
+            noteOff.setMessage(ShortMessage.NOTE_OFF, safeChannel, safeNote, 0);
             track.add(new MidiEvent(noteOff, tick + duration));
         } catch (InvalidMidiDataException e) {
-            e.printStackTrace();
+            System.err.println("Error creating MIDI event: " + e.getMessage() + 
+                             " (channel=" + channel + ", note=" + note + ", velocity=" + velocity + ")");
         }
     }
     
@@ -757,6 +1090,389 @@ public class DataToMidiGenerator extends JFrame {
     }
     
     /**
+     * Create Image to Music panel
+     */
+    private JPanel createImageToMusicPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Image to Music Conversion"));
+        
+        // Create interactive image panel
+        InteractiveImagePanel imagePanel = new InteractiveImagePanel();
+        imagePanel.setPreferredSize(new Dimension(500, 350));
+        
+        // Image loading panel
+        JPanel loadPanel = new JPanel(new FlowLayout());
+        JButton loadImageBtn = new JButton("Load Image");
+        JLabel imageStatusLabel = new JLabel("No image loaded");
+        JButton playRegionBtn = new JButton("Play Selected Area");
+        playRegionBtn.setEnabled(false);
+        
+        loadImageBtn.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Image files", "jpg", "jpeg", "png", "bmp", "gif"));
+            
+            if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                try {
+                    if (imageToMusicSynth == null) {
+                        imageToMusicSynth = new ImageToMusicSynthesizer();
+                    }
+                    
+                    java.io.File selectedFile = fileChooser.getSelectedFile();
+                    java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(selectedFile);
+                    
+                    if (image != null) {
+                        // Load image into both synthesizer and interactive panel
+                        imageToMusicSynth.loadImage(image);
+                        imagePanel.setImage(image);
+                        imageStatusLabel.setText("Loaded: " + selectedFile.getName() + " - Select an area to play");
+                        playRegionBtn.setEnabled(true);
+                        
+                        // Clear any existing listeners and set up new one
+                        imagePanel.clearAreaSelectionListeners();
+                        InteractiveImagePanel.AreaSelectionListener areaListener = (area, region) -> {
+                            if (region != null && imageToMusicSynth != null) {
+                                imageToMusicSynth.setSelectedRegion(area, region);
+                                imageStatusLabel.setText("Area selected: " + area.width + "x" + area.height + " px - Ready to play");
+                                
+                                // Auto-generate music from new selection for immediate feedback
+                                SwingUtilities.invokeLater(() -> {
+                                    try {
+                                        javax.sound.midi.Sequence sequence = imageToMusicSynth.generateMusicFromImage();
+                                        if (sequence != null && sequencer != null) {
+                                            sequencer.setSequence(sequence);
+                                            statusLabel.setText("Music updated from selected area - ready to play");
+                                        }
+                                    } catch (Exception musicEx) {
+                                        System.err.println("Error updating music from selection: " + musicEx.getMessage());
+                                    }
+                                });
+                            }
+                        };
+                        
+                        imagePanel.addAreaSelectionListener(areaListener);
+                        
+                    } else {
+                        imageStatusLabel.setText("Failed to load image");
+                    }
+                } catch (Exception ex) {
+                    imageStatusLabel.setText("Error: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
+            }
+        });
+        
+        // Play region button functionality
+        playRegionBtn.addActionListener(e -> {
+            try {
+                if (imageToMusicSynth != null) {
+                    javax.sound.midi.Sequence sequence = imageToMusicSynth.generateMusicFromImage();
+                    if (sequence != null && sequencer != null) {
+                        sequencer.setSequence(sequence);
+                        sequencer.start();
+                        statusLabel.setText("Playing music from selected image area");
+                    }
+                }
+            } catch (Exception ex) {
+                statusLabel.setText("Error playing region: " + ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+        
+        loadPanel.add(loadImageBtn);
+        loadPanel.add(playRegionBtn);
+        loadPanel.add(imageStatusLabel);
+        
+        // Image analysis controls
+        JPanel controlsPanel = new JPanel(new GridLayout(0, 2, 10, 5));
+        controlsPanel.setBorder(BorderFactory.createTitledBorder("Image Analysis Settings"));
+        
+        // Brightness mapping
+        controlsPanel.add(new JLabel("Brightness → Volume:"));
+        JSlider brightnessSlider = new JSlider(0, 100, 80);
+        brightnessSlider.addChangeListener(e -> {
+            if (imageToMusicSynth != null) {
+                imageToMusicSynth.setBrightnessMapping(brightnessSlider.getValue() / 100.0f);
+            }
+        });
+        controlsPanel.add(brightnessSlider);
+        
+        // Color mapping
+        controlsPanel.add(new JLabel("Color → Pitch:"));
+        JSlider colorSlider = new JSlider(0, 100, 60);
+        colorSlider.addChangeListener(e -> {
+            if (imageToMusicSynth != null) {
+                imageToMusicSynth.setColorMapping(colorSlider.getValue() / 100.0f);
+            }
+        });
+        controlsPanel.add(colorSlider);
+        
+        // Saturation mapping
+        controlsPanel.add(new JLabel("Saturation → Intensity:"));
+        JSlider saturationSlider = new JSlider(0, 100, 70);
+        saturationSlider.addChangeListener(e -> {
+            if (imageToMusicSynth != null) {
+                imageToMusicSynth.setSaturationMapping(saturationSlider.getValue() / 100.0f);
+            }
+        });
+        controlsPanel.add(saturationSlider);
+        
+        // Create left side with image display
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.add(loadPanel, BorderLayout.NORTH);
+        leftPanel.add(imagePanel, BorderLayout.CENTER);
+        
+        // Create instructions panel
+        JPanel instructionsPanel = new JPanel(new BorderLayout());
+        instructionsPanel.setBorder(BorderFactory.createTitledBorder("Instructions"));
+        JTextArea instructions = new JTextArea(
+            "1. Load an image using 'Load Image' button\n" +
+            "2. Drag to select different areas of the image\n" +
+            "3. Yellow highlight shows the selected area\n" +
+            "4. Click 'Play Selected Area' to hear that region\n" +
+            "5. Double-click image to select entire image\n" +
+            "6. Adjust mapping controls to change the sound"
+        );
+        instructions.setEditable(false);
+        instructions.setFont(instructions.getFont().deriveFont(12f));
+        instructions.setBackground(panel.getBackground());
+        instructions.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        instructionsPanel.add(instructions, BorderLayout.CENTER);
+        
+        // Create right side with controls and instructions
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.add(instructionsPanel, BorderLayout.NORTH);
+        rightPanel.add(controlsPanel, BorderLayout.CENTER);
+        
+        // Split the panel
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
+        splitPane.setDividerLocation(520);
+        splitPane.setResizeWeight(0.6);
+        
+        panel.add(splitPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Create DAW Integration panel
+     */
+    private JPanel createDAWIntegrationPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("DAW Integration"));
+        
+        // MIDI Output Section
+        JPanel midiPanel = new JPanel(new GridBagLayout());
+        midiPanel.setBorder(BorderFactory.createTitledBorder("MIDI Output"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        
+        gbc.insets = new java.awt.Insets(5, 5, 5, 5);
+        
+        // MIDI Device Selection
+        gbc.gridx = 0; gbc.gridy = 0;
+        midiPanel.add(new JLabel("MIDI Device:"), gbc);
+        
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        JComboBox<String> midiDeviceCombo = new JComboBox<>();
+        midiPanel.add(midiDeviceCombo, gbc);
+        
+        gbc.gridx = 2; gbc.fill = GridBagConstraints.NONE;
+        JButton refreshMidiBtn = new JButton("Refresh");
+        midiPanel.add(refreshMidiBtn, gbc);
+        
+        // MIDI Channel
+        gbc.gridx = 0; gbc.gridy = 1;
+        midiPanel.add(new JLabel("MIDI Channel:"), gbc);
+        
+        gbc.gridx = 1;
+        JSpinner midiChannelSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 16, 1));
+        midiPanel.add(midiChannelSpinner, gbc);
+        
+        // MIDI Connect button
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        JButton midiConnectBtn = new JButton("Connect MIDI");
+        midiPanel.add(midiConnectBtn, gbc);
+        
+        // Audio Output Section
+        JPanel audioPanel = new JPanel(new GridBagLayout());
+        audioPanel.setBorder(BorderFactory.createTitledBorder("Audio Output"));
+        gbc = new GridBagConstraints();
+        gbc.insets = new java.awt.Insets(5, 5, 5, 5);
+        
+        // Audio Device Selection
+        gbc.gridx = 0; gbc.gridy = 0;
+        audioPanel.add(new JLabel("Audio Device:"), gbc);
+        
+        gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
+        JComboBox<String> audioDeviceCombo = new JComboBox<>();
+        audioPanel.add(audioDeviceCombo, gbc);
+        
+        gbc.gridx = 2; gbc.fill = GridBagConstraints.NONE;
+        JButton refreshAudioBtn = new JButton("Refresh");
+        audioPanel.add(refreshAudioBtn, gbc);
+        
+        // Buffer Size
+        gbc.gridx = 0; gbc.gridy = 1;
+        audioPanel.add(new JLabel("Buffer Size:"), gbc);
+        
+        gbc.gridx = 1;
+        JComboBox<Integer> bufferSizeCombo = new JComboBox<>(new Integer[]{64, 128, 256, 512, 1024, 2048});
+        bufferSizeCombo.setSelectedItem(512);
+        audioPanel.add(bufferSizeCombo, gbc);
+        
+        // Sample Rate
+        gbc.gridx = 0; gbc.gridy = 2;
+        audioPanel.add(new JLabel("Sample Rate:"), gbc);
+        
+        gbc.gridx = 1;
+        JComboBox<Integer> sampleRateCombo = new JComboBox<>(new Integer[]{22050, 44100, 48000, 88200, 96000});
+        sampleRateCombo.setSelectedItem(44100);
+        audioPanel.add(sampleRateCombo, gbc);
+        
+        // Audio Connect button
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        JButton audioConnectBtn = new JButton("Connect Audio");
+        audioPanel.add(audioConnectBtn, gbc);
+        
+        // Status and Control Section
+        JPanel statusPanel = new JPanel(new GridLayout(0, 1, 5, 5));
+        statusPanel.setBorder(BorderFactory.createTitledBorder("Status & Control"));
+        
+        JLabel midiStatusLabel = new JLabel("MIDI: Disconnected");
+        JLabel audioStatusLabel = new JLabel("Audio: Disconnected");
+        
+        JButton startStreamingBtn = new JButton("Start Audio Streaming");
+        JButton stopStreamingBtn = new JButton("Stop Audio Streaming");
+        stopStreamingBtn.setEnabled(false);
+        
+        statusPanel.add(midiStatusLabel);
+        statusPanel.add(audioStatusLabel);
+        statusPanel.add(startStreamingBtn);
+        statusPanel.add(stopStreamingBtn);
+        
+        // Event Handlers
+        refreshMidiBtn.addActionListener(e -> {
+            if (dawManager != null) {
+                dawManager.refreshAvailableDevices();
+                midiDeviceCombo.removeAllItems();
+                for (javax.sound.midi.MidiDevice.Info info : dawManager.getAvailableMidiDevices()) {
+                    midiDeviceCombo.addItem(info.getName());
+                }
+            }
+        });
+        
+        refreshAudioBtn.addActionListener(e -> {
+            if (dawManager != null) {
+                dawManager.refreshAvailableDevices();
+                audioDeviceCombo.removeAllItems();
+                for (javax.sound.sampled.Mixer.Info info : dawManager.getAvailableAudioDevices()) {
+                    audioDeviceCombo.addItem(info.getName());
+                }
+            }
+        });
+        
+        midiConnectBtn.addActionListener(e -> {
+            if (dawManager != null && midiDeviceCombo.getSelectedIndex() >= 0) {
+                try {
+                    java.util.List<javax.sound.midi.MidiDevice.Info> devices = dawManager.getAvailableMidiDevices();
+                    if (midiDeviceCombo.getSelectedIndex() < devices.size()) {
+                        javax.sound.midi.MidiDevice.Info selectedDevice = devices.get(midiDeviceCombo.getSelectedIndex());
+                        
+                        // Set MIDI channel
+                        int channel = (Integer) midiChannelSpinner.getValue() - 1; // Convert to 0-based
+                        dawManager.setMidiChannel(channel);
+                        
+                        if (dawManager.setupMidiOutput(selectedDevice)) {
+                            midiStatusLabel.setText("MIDI: Connected to " + selectedDevice.getName());
+                            midiConnectBtn.setText("Disconnect MIDI");
+                        } else {
+                            midiStatusLabel.setText("MIDI: Connection failed");
+                        }
+                    }
+                } catch (Exception ex) {
+                    midiStatusLabel.setText("MIDI: Error - " + ex.getMessage());
+                }
+            } else {
+                // Disconnect
+                if (dawManager != null) {
+                    dawManager.closeMidiOutput();
+                    midiStatusLabel.setText("MIDI: Disconnected");
+                    midiConnectBtn.setText("Connect MIDI");
+                }
+            }
+        });
+        
+        audioConnectBtn.addActionListener(e -> {
+            if (dawManager != null && audioDeviceCombo.getSelectedIndex() >= 0) {
+                try {
+                    java.util.List<javax.sound.sampled.Mixer.Info> devices = dawManager.getAvailableAudioDevices();
+                    if (audioDeviceCombo.getSelectedIndex() < devices.size()) {
+                        javax.sound.sampled.Mixer.Info selectedDevice = devices.get(audioDeviceCombo.getSelectedIndex());
+                        
+                        // Set audio parameters
+                        dawManager.setBufferSize((Integer) bufferSizeCombo.getSelectedItem());
+                        dawManager.setSampleRate((Integer) sampleRateCombo.getSelectedItem());
+                        
+                        if (dawManager.setupAudioOutput(selectedDevice)) {
+                            audioStatusLabel.setText("Audio: Connected to " + selectedDevice.getName());
+                            audioConnectBtn.setText("Disconnect Audio");
+                            startStreamingBtn.setEnabled(true);
+                        } else {
+                            audioStatusLabel.setText("Audio: Connection failed");
+                        }
+                    }
+                } catch (Exception ex) {
+                    audioStatusLabel.setText("Audio: Error - " + ex.getMessage());
+                }
+            } else {
+                // Disconnect
+                if (dawManager != null) {
+                    dawManager.closeAudioOutput();
+                    audioStatusLabel.setText("Audio: Disconnected");
+                    audioConnectBtn.setText("Connect Audio");
+                    startStreamingBtn.setEnabled(false);
+                    stopStreamingBtn.setEnabled(false);
+                }
+            }
+        });
+        
+        startStreamingBtn.addActionListener(e -> {
+            if (dawManager != null && audioEngine != null) {
+                dawManager.startAudioStreaming(audioEngine);
+                startStreamingBtn.setEnabled(false);
+                stopStreamingBtn.setEnabled(true);
+                audioStatusLabel.setText(audioStatusLabel.getText() + " (Streaming)");
+            }
+        });
+        
+        stopStreamingBtn.addActionListener(e -> {
+            if (dawManager != null) {
+                dawManager.stopAudioStreaming();
+                startStreamingBtn.setEnabled(true);
+                stopStreamingBtn.setEnabled(false);
+                String status = audioStatusLabel.getText();
+                if (status.contains(" (Streaming)")) {
+                    audioStatusLabel.setText(status.replace(" (Streaming)", ""));
+                }
+            }
+        });
+        
+        // Initialize device lists
+        refreshMidiBtn.doClick();
+        refreshAudioBtn.doClick();
+        
+        // Layout
+        JPanel topPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        topPanel.add(midiPanel);
+        topPanel.add(audioPanel);
+        
+        panel.add(topPanel, BorderLayout.CENTER);
+        panel.add(statusPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
      * Clean shutdown
      */
     public void shutdown() {
@@ -767,12 +1483,21 @@ public class DataToMidiGenerator extends JFrame {
         if (midiSynth != null) {
             midiSynth.close();
         }
+        if (audioEngine != null) {
+            audioEngine.stop();
+        }
+        if (patternMatrix != null && patternMatrix.isPlaying()) {
+            patternMatrix.stop();
+        }
         if (weatherService != null) {
             try {
                 weatherService.close();
             } catch (Exception e) {
                 System.err.println("Error closing weather service: " + e.getMessage());
             }
+        }
+        if (dawManager != null) {
+            dawManager.shutdown();
         }
     }
     

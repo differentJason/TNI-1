@@ -17,6 +17,9 @@
 /Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/generative/SynthVoice.java
 /Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/generative/WaveformGenerator.java
 /Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/generative/WeatherSonificationSynthesizer.java
+/Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/ui/HardwareStyleUI.java
+/Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/ui/HardwareUIAnimator.java
+/Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/ui/SkinManager.java
 /Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/weather/WeatherData.java
 /Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/weather/WeatherService.java
 /Users/jasonmehaffey/GitHub/TNI-1/src/main/java/com/tni/synthesizer/weather/WeatherServiceException.java

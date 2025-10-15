@@ -6,8 +6,9 @@ import com.tni.synthesizer.weather.WeatherServiceException;
 import javax.sound.midi.*;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.File;
+import com.tni.synthesizer.ui.HardwareStyleUI;
+import com.tni.synthesizer.ui.SynthChannelStrip;
 import java.util.*;
 import java.util.List;
 
@@ -58,12 +59,11 @@ public class DataToMidiGenerator extends JFrame {
     private JComboBox<SynthChannel.Waveform>[] channelWaveforms;
     private JSlider[] channelVolumes, channelPans;
     private JCheckBox[] channelEnabled;
-    private JButton loadImageButton;
+    private SynthChannelStrip[] channelStrips; // Store references for oscilloscope updates
+
     private JLabel imageStatusLabel;
     
-    // Effects UI components
-    private JCheckBox[] effectsEnabled;
-    private JSlider[] effectsParams;
+    // Effects UI components - removed (unused)
     
     // Current settings
     private int currentTempo = 120;
@@ -132,16 +132,25 @@ public class DataToMidiGenerator extends JFrame {
         // Main content panel with tabs
         JTabbedPane mainTabs = new JTabbedPane();
         
-        // Basic data input tab
-        JPanel basicPanel = new JPanel(new BorderLayout());
-        basicPanel.add(createInputPanel(), BorderLayout.CENTER);
-        basicPanel.add(createControlPanel(), BorderLayout.EAST);
-        mainTabs.addTab("Data Input", basicPanel);
+        // Combined synthesizer and data input tab
+        JPanel mainSynthPanel = new JPanel(new BorderLayout());
         
-        // Advanced synthesizer tabs
+        // Synthesizer controls at top
         if (audioEngine != null) {
-            mainTabs.addTab("Synthesizer", createSynthesizerPanel());
-            mainTabs.addTab("Effects", createEffectsPanel());
+            mainSynthPanel.add(createSynthesizerPanel(), BorderLayout.CENTER);
+        }
+        
+        // Data input section at bottom - smaller and horizontal
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(createCompactInputPanel(), BorderLayout.CENTER);
+        bottomPanel.add(createControlPanel(), BorderLayout.EAST);
+        bottomPanel.setBorder(BorderFactory.createTitledBorder("Data Input"));
+        
+        mainSynthPanel.add(bottomPanel, BorderLayout.SOUTH);
+        mainTabs.addTab("Synthesizer", mainSynthPanel);
+        
+        // Other tabs
+        if (audioEngine != null) {
             mainTabs.addTab("Image to Music", createImageToMusicPanel());
             mainTabs.addTab("DAW Integration", createDAWIntegrationPanel());
         }
@@ -156,54 +165,62 @@ public class DataToMidiGenerator extends JFrame {
     }
     
     /**
-     * Create data input panel
+     * Create compact data input panel for bottom of synthesizer view
      */
-    private JPanel createInputPanel() {
+    private JPanel createCompactInputPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Data Input"));
         
-        dataInput = new JTextArea(10, 40);
+        // Smaller, more compact text area
+        dataInput = new JTextArea(3, 60);  // Reduced height, increased width
         dataInput.setText("1.0, 2.5, 3.2, 2.8, 4.1, 3.7, 5.2, 4.8, 3.9, 2.1, 1.5, 2.3\n" +
-                         "Enter comma-separated numbers, or multiple lines for multi-dimensional data");
-        dataInput.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+                         "Enter data (each line feeds channels: 1 line→all 8, 2 lines→4 each, etc.)");
+        dataInput.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));  // Smaller font
         
         JScrollPane scrollPane = new JScrollPane(dataInput);
+        scrollPane.setPreferredSize(new Dimension(600, 80));  // Compact size
         panel.add(scrollPane, BorderLayout.CENTER);
         
-        // Sample data buttons
-        JPanel samplePanel = new JPanel(new FlowLayout());
-        JButton sampleButton1 = new JButton("Pitcher/Catcher");
-        JButton sampleButton2 = new JButton("Sample Weather");
-        JButton sampleButton3 = new JButton("Random Walk");
-        loadImageButton = new JButton("Load Image");
+        // Compact sample buttons in one row
+        JPanel samplePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton sampleButton1 = new JButton("Baseball");
+        JButton sampleButton2 = new JButton("Weather");
+        JButton sampleButton3 = new JButton("Random");
+        
+        // Smaller buttons
+        sampleButton1.setPreferredSize(new Dimension(80, 25));
+        sampleButton2.setPreferredSize(new Dimension(80, 25));
+        sampleButton3.setPreferredSize(new Dimension(80, 25));
         
         sampleButton1.addActionListener(e -> loadSampleData("baseball"));
         sampleButton2.addActionListener(e -> loadSampleData("weather"));
         sampleButton3.addActionListener(e -> loadSampleData("random"));
-        loadImageButton.addActionListener(e -> loadImageFile());
         
         samplePanel.add(sampleButton1);
         samplePanel.add(sampleButton2);
         samplePanel.add(sampleButton3);
-        samplePanel.add(loadImageButton);
         
-        // Image status label
+        // Add test button for multi-line data
+        JButton multiLineTestBtn = new JButton("Multi-Line Test");
+        multiLineTestBtn.setPreferredSize(new Dimension(100, 25));
+        multiLineTestBtn.addActionListener(e -> loadMultiLineTestData());
+        samplePanel.add(multiLineTestBtn);
+        
+        // Status labels in compact format
         imageStatusLabel = new JLabel("No image loaded");
-        imageStatusLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 11));
+        imageStatusLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 10));
         
-        // Weather API section
-        JPanel weatherPanel = createWeatherPanel();
+        statusLabel = new JLabel("Ready");
+        statusLabel.setFont(new Font(Font.SANS_SERIF, Font.ITALIC, 10));
         
-        JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        imagePanel.add(new JLabel("Image Status:"));
-        imagePanel.add(imageStatusLabel);
+        JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        statusPanel.add(new JLabel("Status:"));
+        statusPanel.add(statusLabel);
+        statusPanel.add(Box.createHorizontalStrut(20));
+        statusPanel.add(new JLabel("Image:"));
+        statusPanel.add(imageStatusLabel);
         
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.add(samplePanel, BorderLayout.NORTH);
-        bottomPanel.add(imagePanel, BorderLayout.CENTER);
-        bottomPanel.add(weatherPanel, BorderLayout.SOUTH);
-        
-        panel.add(bottomPanel, BorderLayout.SOUTH);
+        panel.add(samplePanel, BorderLayout.WEST);
+        panel.add(statusPanel, BorderLayout.EAST);
         
         return panel;
     }
@@ -427,79 +444,65 @@ public class DataToMidiGenerator extends JFrame {
     }
     
     /**
-     * Load and process image file for music generation
+     * Load multi-line test data to demonstrate channel distribution
      */
-    private void loadImageFile() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-            "Image files", "jpg", "jpeg", "png", "gif", "bmp"));
+    private void loadMultiLineTestData() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("1.0, 2.5, 3.2, 2.8, 4.1, 3.7, 2.9\n"); // Line 1 - Bass frequencies
+        sb.append("5.2, 4.8, 6.1, 5.5, 4.9, 6.3, 5.8\n"); // Line 2 - Mid frequencies  
+        sb.append("7.1, 8.3, 7.7, 8.9, 7.4, 8.6, 7.9\n"); // Line 3 - High frequencies
+        sb.append("2.3, 1.8, 3.1, 2.7, 1.9, 3.4, 2.6");   // Line 4 - Rhythm pattern
         
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            try {
-                File imageFile = chooser.getSelectedFile();
-                BufferedImage image = javax.imageio.ImageIO.read(imageFile);
-                
-                if (image == null) {
-                    imageStatusLabel.setText("Error: Could not load image");
-                    return;
-                }
-                
-                // Convert image to musical data
-                double[] imageData = ImageToMusicSynthesizer.imageToNumericalData(image);
-                ImageToMusicSynthesizer.ImageAnalysis analysis = 
-                    ImageToMusicSynthesizer.analyzeImageComposition(image);
-                
-                // Format data as comma-separated string
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < Math.min(imageData.length, 100); i++) { // Limit to first 100 data points
-                    if (i > 0) sb.append(", ");
-                    sb.append(String.format("%.1f", imageData[i]));
-                }
-                
-                dataInput.setText(sb.toString());
-                
-                // Auto-suggest settings based on image analysis
-                tempoSlider.setValue(analysis.suggestedTempo);
-                styleCombo.setSelectedItem(analysis.suggestedKey);
-                
-                imageStatusLabel.setText(String.format("Loaded: %s (%dx%d) - %s", 
-                    imageFile.getName(), image.getWidth(), image.getHeight(), analysis.toString()));
-                
-            } catch (Exception e) {
-                imageStatusLabel.setText("Error loading image: " + e.getMessage());
-                System.err.println("Image load error: " + e.getMessage());
-            }
-        }
+        dataInput.setText(sb.toString());
+        statusLabel.setText("Loaded multi-line test data - each line feeds different channels");
     }
     
+
+    
     /**
-     * Create synthesizer control panel
+     * Create synthesizer control panel with hardware-style interface
      */
     private JPanel createSynthesizerPanel() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(HardwareStyleUI.PANEL_BACKGROUND);
         
-        // Channel controls
-        JPanel channelPanel = new JPanel(new GridLayout(0, 1, 5, 5));
-        channelPanel.setBorder(BorderFactory.createTitledBorder("Synthesizer Channels"));
+        // Create horizontal layout for vertical channel strips
+        JPanel channelContainer = new JPanel();
+        channelContainer.setLayout(new BoxLayout(channelContainer, BoxLayout.X_AXIS));
+        channelContainer.setBackground(HardwareStyleUI.PANEL_BACKGROUND);
+        channelContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
         int maxChannels = audioEngine != null ? audioEngine.getMaxChannels() : 8;
+        
+        // Initialize arrays
         @SuppressWarnings("unchecked")
         JComboBox<SynthChannel.Waveform>[] waveforms = new JComboBox[maxChannels];
         channelWaveforms = waveforms;
-        channelVolumes = new JSlider[maxChannels];
-        channelPans = new JSlider[maxChannels];
+        channelVolumes = new JSlider[maxChannels]; // Keep for compatibility, but won't use
+        channelPans = new JSlider[maxChannels]; // Keep for compatibility, but won't use
         channelEnabled = new JCheckBox[maxChannels];
+        channelStrips = new SynthChannelStrip[maxChannels]; // Store channel strip references
         
+        // Create vertical channel strips
         for (int i = 0; i < maxChannels; i++) {
-            JPanel channelRow = createChannelControlRow(i);
-            channelPanel.add(channelRow);
+            SynthChannelStrip channelStrip = new SynthChannelStrip(i + 1, i);
+            channelStrip.setAudioEngine(audioEngine); // Connect to audio engine
+            channelStrips[i] = channelStrip; // Store reference for oscilloscope updates
+            channelContainer.add(channelStrip);
+            if (i < maxChannels - 1) {
+                channelContainer.add(Box.createHorizontalStrut(5));
+            }
         }
         
-        JScrollPane scrollPane = new JScrollPane(channelPanel);
-        scrollPane.setPreferredSize(new Dimension(600, 400));
+        JScrollPane scrollPane = new JScrollPane(channelContainer);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        scrollPane.setBackground(HardwareStyleUI.PANEL_BACKGROUND);
+        scrollPane.getViewport().setBackground(HardwareStyleUI.PANEL_BACKGROUND);
+        
         panel.add(scrollPane, BorderLayout.CENTER);
         
-        // Pattern matrix controls
+        // Pattern matrix controls at bottom
         JPanel patternPanel = createPatternMatrixPanel();
         panel.add(patternPanel, BorderLayout.SOUTH);
         
@@ -572,78 +575,7 @@ public class DataToMidiGenerator extends JFrame {
         return panel;
     }
     
-    /**
-     * Create effects control panel
-     */
-    private JPanel createEffectsPanel() {
-        JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
-        panel.setBorder(BorderFactory.createTitledBorder("Master Effects"));
-        
-        EffectsChain.EffectType[] effects = EffectsChain.EffectType.values();
-        effectsEnabled = new JCheckBox[effects.length];
-        effectsParams = new JSlider[effects.length * 2]; // 2 params per effect
-        
-        for (int i = 0; i < effects.length; i++) {
-            JPanel effectPanel = createEffectControlPanel(effects[i], i);
-            panel.add(effectPanel);
-        }
-        
-        return panel;
-    }
-    
-    /**
-     * Create individual effect control panel
-     */
-    private JPanel createEffectControlPanel(EffectsChain.EffectType effectType, int index) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder(effectType.getDisplayName()));
-        GridBagConstraints gbc = new GridBagConstraints();
-        
-        // Enable checkbox
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        effectsEnabled[index] = new JCheckBox("Enable", false);
-        effectsEnabled[index].addActionListener(e -> updateEffectEnabled(effectType));
-        panel.add(effectsEnabled[index], gbc);
-        
-        // Effect-specific parameters
-        gbc.gridwidth = 1; gbc.gridy = 1;
-        switch (effectType) {
-            case REVERB:
-                gbc.gridx = 0;
-                panel.add(new JLabel("Mix:"), gbc);
-                gbc.gridx = 1;
-                JSlider reverbMix = new JSlider(0, 100, 30);
-                effectsParams[index * 2] = reverbMix;
-                panel.add(reverbMix, gbc);
-                break;
-            case DELAY:
-                gbc.gridx = 0;
-                panel.add(new JLabel("Time:"), gbc);
-                gbc.gridx = 1;
-                JSlider delayTime = new JSlider(10, 200, 25);
-                effectsParams[index * 2] = delayTime;
-                panel.add(delayTime, gbc);
-                break;
-            case DISTORTION:
-                gbc.gridx = 0;
-                panel.add(new JLabel("Drive:"), gbc);
-                gbc.gridx = 1;
-                JSlider distDrive = new JSlider(100, 1000, 200);
-                effectsParams[index * 2] = distDrive;
-                panel.add(distDrive, gbc);
-                break;
-            default:
-                gbc.gridx = 0;
-                panel.add(new JLabel("Amount:"), gbc);
-                gbc.gridx = 1;
-                JSlider amount = new JSlider(0, 100, 50);
-                effectsParams[index * 2] = amount;
-                panel.add(amount, gbc);
-                break;
-        }
-        
-        return panel;
-    }
+    // Effects panel methods removed - functionality not working
     
     // Channel update methods
     private void updateChannelEnabled(int channelIndex) {
@@ -685,15 +617,7 @@ public class DataToMidiGenerator extends JFrame {
         }
     }
     
-    private void updateEffectEnabled(EffectsChain.EffectType effectType) {
-        if (audioEngine != null) {
-            EffectsChain effects = audioEngine.getMasterEffects();
-            if (effects != null) {
-                int index = effectType.ordinal();
-                effects.setEffectEnabled(effectType, effectsEnabled[index].isSelected());
-            }
-        }
-    }
+    // updateEffectEnabled method removed - effects functionality not working
     
     /**
      * Fetch real weather data from API
@@ -829,21 +753,23 @@ public class DataToMidiGenerator extends JFrame {
                 return;
             }
             
-            // Parse data
-            double[] dataArray = parseDataInput(inputText);
-            if (dataArray.length == 0) {
+            // Parse data by lines for channel distribution
+            double[][] dataLines = parseDataInputByLines(inputText);
+            if (dataLines.length == 0) {
                 statusLabel.setText("Error: Could not parse data");
                 return;
             }
             
-            // Generate sequence
-            generateSequenceFromData(dataArray);
+            // Generate improved sequence with varied patterns
+            double[] flatData = parseDataInput(inputText);
+            generateImprovedSequenceFromData(flatData, dataLines);
             
             // Enable play/save buttons
             playButton.setEnabled(true);
             saveButton.setEnabled(true);
             
-            statusLabel.setText(String.format("Generated MIDI sequence from %d data points", dataArray.length));
+            statusLabel.setText(String.format("Generated MIDI from %d lines, %d total points", 
+                dataLines.length, flatData.length));
             
         } catch (Exception e) {
             statusLabel.setText("Error generating MIDI: " + e.getMessage());
@@ -852,16 +778,289 @@ public class DataToMidiGenerator extends JFrame {
     }
     
     /**
-     * Parse input data from text
+     * Generate much more interesting and varied MIDI sequence
      */
-    private double[] parseDataInput(String input) {
-        List<Double> values = new ArrayList<>();
+    private void generateImprovedSequenceFromData(double[] dataArray, double[][] dataLines) {
+        try {
+            // Create new MIDI sequence
+            sequence = new Sequence(Sequence.PPQ, 480);
+            Track track = sequence.createTrack();
+            
+            // Analyze data characteristics
+            DataAnalysis analysis = analyzeData(dataArray);
+            
+            // Set tempo based on data volatility
+            int dynamicTempo = calculateDynamicTempo(analysis);
+            setTempoMessage(track, dynamicTempo);
+            
+            long currentTick = 0;
+            int beatsPerSection = 4; // 4 beats per section
+            
+            for (int i = 0; i < dataArray.length; i++) {
+                // Generate varied musical content for each data point
+                currentTick = generateMusicalSection(track, dataArray, dataLines, analysis, i, currentTick, beatsPerSection);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private int calculateDynamicTempo(DataAnalysis analysis) {
+        // Base tempo on data range and variance
+        double range = Math.abs(analysis.max - analysis.min);
+        double volatility = range / Math.max(1.0, Math.abs(analysis.max));
+        int tempo = (int)(90 + volatility * 60); // 90-150 BPM range
+        return Math.max(80, Math.min(160, tempo));
+    }
+    
+    private void setTempoMessage(Track track, int tempo) throws InvalidMidiDataException {
+        MetaMessage tempoMessage = new MetaMessage();
+        int microsecondsPerQuarter = 60000000 / tempo;
+        byte[] tempoData = new byte[3];
+        tempoData[0] = (byte) ((microsecondsPerQuarter >> 16) & 0xFF);
+        tempoData[1] = (byte) ((microsecondsPerQuarter >> 8) & 0xFF);
+        tempoData[2] = (byte) (microsecondsPerQuarter & 0xFF);
+        tempoMessage.setMessage(0x51, tempoData, 3);
+        track.add(new MidiEvent(tempoMessage, 0));
+    }
+    
+    private long generateMusicalSection(Track track, double[] dataArray, double[][] dataLines, 
+                                      DataAnalysis analysis, int dataIndex, long currentTick, int beatsPerSection) 
+                                      throws InvalidMidiDataException {
         
-        // Split by lines and commas
+        double currentValue = dataArray[dataIndex];
+        double normalizedValue = (currentValue - analysis.min) / (analysis.max - analysis.min);
+        
+        // Determine musical style based on data characteristics
+        MusicStyle style = chooseMusicStyle(normalizedValue, dataIndex);
+        
+        // Generate bass line (Channel 0)
+        generateBassLine(track, style, normalizedValue, currentTick, beatsPerSection);
+        
+        // Generate chords (Channels 1-2)
+        generateChords(track, style, normalizedValue, dataIndex, currentTick, beatsPerSection);
+        
+        // Generate melody (Channel 3)
+        generateMelody(track, style, normalizedValue, dataIndex, currentTick, beatsPerSection);
+        
+        // Generate percussion (Channel 9 - standard MIDI drums)
+        generateDrums(track, style, normalizedValue, currentTick, beatsPerSection);
+        
+        // Generate additional textural elements based on data lines
+        if (dataLines.length > 1) {
+            generateTextureFromLines(track, dataLines, dataIndex, normalizedValue, currentTick, beatsPerSection);
+        }
+        
+        return currentTick + (480 * beatsPerSection); // Move to next section
+    }
+    
+    private MusicStyle chooseMusicStyle(double normalizedValue, int dataIndex) {
+        // Change style based on data characteristics and position
+        if (normalizedValue < 0.3) {
+            return MusicStyle.AMBIENT;
+        } else if (normalizedValue > 0.7) {
+            return MusicStyle.ENERGETIC;
+        } else if (dataIndex % 8 < 4) {
+            return MusicStyle.RHYTHMIC;
+        } else {
+            return MusicStyle.MELODIC;
+        }
+    }
+    
+    enum MusicStyle {
+        AMBIENT, ENERGETIC, RHYTHMIC, MELODIC
+    }
+    
+    private void generateBassLine(Track track, MusicStyle style, double normalizedValue, long currentTick, int beatsPerSection) throws InvalidMidiDataException {
+        int[] bassNotes = getBassNotes(style, normalizedValue);
+        int velocity = (int)(60 + normalizedValue * 40); // 60-100 velocity
+        
+        for (int beat = 0; beat < beatsPerSection; beat++) {
+            if (shouldPlayBassNote(style, beat)) {
+                int note = bassNotes[beat % bassNotes.length];
+                long tick = currentTick + (beat * 480);
+                int duration = getBassNoteDuration(style);
+                addNoteEvent(track, 0, note, velocity, tick, duration);
+            }
+        }
+    }
+    
+    private void generateChords(Track track, MusicStyle style, double normalizedValue, int dataIndex, long currentTick, int beatsPerSection) throws InvalidMidiDataException {
+        int[][] chords = getChordsForStyle(style, normalizedValue);
+        int velocity = (int)(50 + normalizedValue * 50); // 50-100 velocity
+        
+        for (int beat = 0; beat < beatsPerSection; beat += 2) { // Play chords every 2 beats
+            int[] chord = chords[(dataIndex + beat) % chords.length];
+            long tick = currentTick + (beat * 480);
+            
+            for (int note : chord) {
+                addNoteEvent(track, 1, note, velocity, tick, 480 * 2); // 2 beat duration
+            }
+        }
+    }
+    
+    private void generateMelody(Track track, MusicStyle style, double normalizedValue, int dataIndex, long currentTick, int beatsPerSection) throws InvalidMidiDataException {
+        int[] scale = getScaleForStyle(style);
+        int velocity = (int)(70 + normalizedValue * 30); // 70-100 velocity
+        
+        // Generate melody pattern based on style
+        int[] melodyPattern = getMelodyPattern(style, normalizedValue);
+        
+        for (int i = 0; i < melodyPattern.length && i < beatsPerSection * 2; i++) { // 8th notes
+            if (melodyPattern[i] > 0) {
+                int scaleIndex = (int)(normalizedValue * (scale.length - 1)) + (i % 3);
+                scaleIndex = Math.max(0, Math.min(scale.length - 1, scaleIndex));
+                int note = 60 + scale[scaleIndex] + (int)(normalizedValue * 12); // C4 + scale + octave variation
+                
+                long tick = currentTick + (i * 240); // 8th note intervals
+                addNoteEvent(track, 3, note, velocity, tick, 240);
+            }
+        }
+    }
+    
+    private void generateDrums(Track track, MusicStyle style, double normalizedValue, long currentTick, int beatsPerSection) throws InvalidMidiDataException {
+        int velocity = (int)(80 + normalizedValue * 47); // 80-127 velocity
+        
+        for (int beat = 0; beat < beatsPerSection; beat++) {
+            long tick = currentTick + (beat * 480);
+            
+            // Kick drum pattern
+            if (shouldPlayKick(style, beat)) {
+                addNoteEvent(track, 9, 36, velocity, tick, 120); // Kick drum
+            }
+            
+            // Snare drum pattern
+            if (shouldPlaySnare(style, beat)) {
+                addNoteEvent(track, 9, 38, velocity - 10, tick, 120); // Snare drum
+            }
+            
+            // Hi-hat pattern
+            if (shouldPlayHiHat(style, beat, normalizedValue)) {
+                addNoteEvent(track, 9, 42, velocity - 20, tick, 60); // Hi-hat
+            }
+        }
+    }
+    
+    private void generateTextureFromLines(Track track, double[][] dataLines, int dataIndex, double normalizedValue, long currentTick, int beatsPerSection) throws InvalidMidiDataException {
+        // Use different lines for different textural elements
+        for (int lineIndex = 0; lineIndex < Math.min(dataLines.length, 4); lineIndex++) {
+            double[] line = dataLines[lineIndex];
+            if (line.length > dataIndex) {
+                double lineValue = line[dataIndex % line.length];
+                double lineNormalized = Math.abs(lineValue) / 10.0; // Normalize to 0-1 range roughly
+                
+                // Generate arpeggios or sustained notes based on line data
+                generateArpeggio(track, 4 + lineIndex, lineNormalized, currentTick, beatsPerSection);
+            }
+        }
+    }
+    
+    private void generateArpeggio(Track track, int channel, double normalizedValue, long currentTick, int beatsPerSection) throws InvalidMidiDataException {
+        int[] arpeggioNotes = {60, 64, 67, 72}; // C major arpeggio
+        int velocity = (int)(40 + normalizedValue * 40); // Soft arpeggios
+        
+        for (int i = 0; i < 8 && i < beatsPerSection * 2; i++) { // 8th note arpeggios
+            int note = arpeggioNotes[i % arpeggioNotes.length] + (int)(normalizedValue * 12);
+            long tick = currentTick + (i * 240);
+            addNoteEvent(track, channel, note, velocity, tick, 240);
+        }
+    }
+    
+    // Helper methods for musical patterns
+    private int[] getBassNotes(MusicStyle style, double normalizedValue) {
+        switch (style) {
+            case AMBIENT:   return new int[]{36, 43}; // C, G
+            case ENERGETIC: return new int[]{36, 41, 43, 38}; // C, F, G, D
+            case RHYTHMIC:  return new int[]{36, 36, 43, 41}; // More repetitive
+            default:        return new int[]{36, 43, 48, 43}; // C, G, C5, G
+        }
+    }
+    
+    private boolean shouldPlayBassNote(MusicStyle style, int beat) {
+        switch (style) {
+            case AMBIENT:   return beat % 2 == 0; // Half notes
+            case ENERGETIC: return true; // Every beat
+            case RHYTHMIC:  return beat % 2 == 0 || beat == 3; // Syncopated
+            default:        return beat % 2 == 0; // Half notes
+        }
+    }
+    
+    private int getBassNoteDuration(MusicStyle style) {
+        switch (style) {
+            case AMBIENT:   return 960; // Half note
+            case ENERGETIC: return 240; // Quarter note
+            case RHYTHMIC:  return 360; // Dotted quarter
+            default:        return 480; // Quarter note
+        }
+    }
+    
+    private int[][] getChordsForStyle(MusicStyle style, double normalizedValue) {
+        // Different chord progressions for different styles
+        switch (style) {
+            case AMBIENT:   return new int[][]{{60,64,67}, {65,69,72}, {67,71,74}}; // C, F, G
+            case ENERGETIC: return new int[][]{{60,64,67}, {62,65,69}, {64,67,71}, {65,69,72}}; // C, Dm, Em, F
+            case RHYTHMIC:  return new int[][]{{60,64,67}, {67,71,74}}; // C, G (simple)
+            default:        return new int[][]{{60,64,67}, {65,69,72}, {67,71,74}, {60,64,67}}; // C, F, G, C
+        }
+    }
+    
+    private int[] getScaleForStyle(MusicStyle style) {
+        switch (style) {
+            case AMBIENT:   return new int[]{0, 2, 4, 7, 9}; // Pentatonic
+            case ENERGETIC: return new int[]{0, 2, 4, 5, 7, 9, 11}; // Major scale
+            case RHYTHMIC:  return new int[]{0, 3, 5, 7, 10}; // Minor pentatonic
+            default:        return new int[]{0, 2, 4, 7, 9}; // Pentatonic
+        }
+    }
+    
+    private int[] getMelodyPattern(MusicStyle style, double normalizedValue) {
+        // 1 = play note, 0 = rest
+        switch (style) {
+            case AMBIENT:   return new int[]{1, 0, 1, 0, 1, 0, 0, 0};
+            case ENERGETIC: return new int[]{1, 1, 0, 1, 1, 0, 1, 1};
+            case RHYTHMIC:  return new int[]{1, 0, 1, 1, 0, 1, 0, 1};
+            default:        return new int[]{1, 0, 1, 0, 1, 1, 0, 0};
+        }
+    }
+    
+    private boolean shouldPlayKick(MusicStyle style, int beat) {
+        switch (style) {
+            case ENERGETIC: return beat % 2 == 0; // Every other beat
+            case RHYTHMIC:  return beat == 0 || beat == 3; // 1 and 4
+            default:        return beat == 0; // Just on 1
+        }
+    }
+    
+    private boolean shouldPlaySnare(MusicStyle style, int beat) {
+        switch (style) {
+            case ENERGETIC: return beat == 1 || beat == 3; // 2 and 4
+            case RHYTHMIC:  return beat == 1 || beat == 3; // 2 and 4
+            default:        return beat == 2; // Just on 3
+        }
+    }
+    
+    private boolean shouldPlayHiHat(MusicStyle style, int beat, double normalizedValue) {
+        switch (style) {
+            case AMBIENT:   return normalizedValue > 0.6 && beat % 2 == 0;
+            case ENERGETIC: return true; // Every beat
+            case RHYTHMIC:  return true; // Every beat
+            default:        return beat % 2 == 0; // Half notes
+        }
+    }
+    
+    /**
+     * Parse input data from text, preserving line structure for channel distribution
+     */
+    private double[][] parseDataInputByLines(String input) {
+        List<List<Double>> lineValues = new ArrayList<>();
+        
+        // Split by lines
         String[] lines = input.split("\\n");
         for (String line : lines) {
             if (line.trim().isEmpty() || line.contains("Enter comma-separated")) continue;
             
+            List<Double> values = new ArrayList<>();
             String[] parts = line.split("[,\\s]+");
             for (String part : parts) {
                 try {
@@ -871,9 +1070,35 @@ public class DataToMidiGenerator extends JFrame {
                     // Skip invalid numbers
                 }
             }
+            if (!values.isEmpty()) {
+                lineValues.add(values);
+            }
         }
         
-        return values.stream().mapToDouble(Double::doubleValue).toArray();
+        // Convert to double array
+        double[][] result = new double[lineValues.size()][];
+        for (int i = 0; i < lineValues.size(); i++) {
+            List<Double> line = lineValues.get(i);
+            result[i] = line.stream().mapToDouble(Double::doubleValue).toArray();
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Parse input data from text (legacy method for backwards compatibility)
+     */
+    private double[] parseDataInput(String input) {
+        double[][] lines = parseDataInputByLines(input);
+        List<Double> allValues = new ArrayList<>();
+        
+        for (double[] line : lines) {
+            for (double value : line) {
+                allValues.add(value);
+            }
+        }
+        
+        return allValues.stream().mapToDouble(Double::doubleValue).toArray();
     }
     
     /**
@@ -1226,7 +1451,7 @@ public class DataToMidiGenerator extends JFrame {
         JPanel instructionsPanel = new JPanel(new BorderLayout());
         instructionsPanel.setBorder(BorderFactory.createTitledBorder("Instructions"));
         JTextArea instructions = new JTextArea(
-            "1. Load an image using 'Load Image' button\n" +
+            "1. Load an image using the 'Load Image' button below\n" +
             "2. Drag to select different areas of the image\n" +
             "3. Yellow highlight shows the selected area\n" +
             "4. Click 'Play Selected Area' to hear that region\n" +
@@ -1471,6 +1696,8 @@ public class DataToMidiGenerator extends JFrame {
         
         return panel;
     }
+    
+    // Hardware mixer panel method removed - functionality moved to synthesizer tab
     
     /**
      * Clean shutdown

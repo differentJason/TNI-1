@@ -333,7 +333,6 @@ public class ImageToMusicSynthesizer {
             
             // Get image data from selected region
             double[] imageData = imageToNumericalData(sourceImage);
-            ImageAnalysis analysis = analyzeImageComposition(sourceImage);
             
             // Convert image data to MIDI notes with improved variation
             long tick = 0;
